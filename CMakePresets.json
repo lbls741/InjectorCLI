@@ -1,0 +1,43 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "windows-msvc",
+      "displayName": "Windows x64 (MSVC + Ninja)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/msvc",
+      "architecture": { "value": "x64", "strategy": "external" },
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "windows-mingw",
+      "displayName": "Windows x64 (MinGW-w64, static runtime)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/mingw",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+    },
+    {
+      "name": "linux-cross-mingw",
+      "displayName": "Linux -> Windows x64 (x86_64-w64-mingw32 cross)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/cross",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_SYSTEM_NAME": "Windows",
+        "CMAKE_CXX_COMPILER": "x86_64-w64-mingw32-g++"
+      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "windows-msvc", "configurePreset": "windows-msvc" },
+    { "name": "windows-mingw", "configurePreset": "windows-mingw" },
+    { "name": "linux-cross-mingw", "configurePreset": "linux-cross-mingw" }
+  ]
+}

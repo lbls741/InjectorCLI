@@ -1,0 +1,11 @@
+# 构建产物
+build/
+dist/
+*.obj
+*.pdb
+*.lib
+
+# 编辑器
+.vs/
+.vscode/
+.idea/
