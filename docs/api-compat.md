@@ -22,7 +22,10 @@ hybrid-inject 使用的全部系统调用在 Wine/Proton 中的实现状态。
 | `GetProcAddress(GetModuleHandleW("ntdll.dll"), ...)` | NT 函数动态解析（Injector.cpp） | ✅ Wine ntdll 导出全量 Nt*/Zw* | 亦用于 `wine_get_version` 探测（仅 Wine 有此导出） | 高 |
 | `GetExitCodeThread` | 远程 LoadLibraryW 成败判断 | ✅ | 退出码 = HMODULE 低 32 位（x64 截断，与 Windows 相同的既有限制） | 高 |
 | `SetEnvironmentVariableW` / 子进程环境继承 | WINEDLLOVERRIDES 自动设置（WineCompat.cpp） | ✅ | | 高 |
-| `FreeConsole` | `--quiet` 脱离控制台（Main.cpp） | ✅（kernelbase/console.c） | GUI 启动时随进程创建的控制台随脱离关闭；已有终端窗口保留；文件/管道重定向句柄不受影响 | 高 |
+| `GetFileType` / 标准句柄探测 | 判断是否被重定向（Main.cpp BindStdio） | ✅ | | 高 |
+| `AttachConsole(ATTACH_PARENT_PROCESS)` + `CONOUT$`/`CONIN$` freopen | GUI 子系统下绑回父终端（Main.cpp BindStdio） | ✅（kernelbase/console.c，Wine 实现 AttachConsole 与 CONOUT$/CONIN$ 设备名） | GUI 子系统 exe 本就不分配控制台——GUI 启动零窗口；仅终端场景依附父控制台 | 高 |
+| `_open_osfhandle` / `_dup2`（CRT） | 管道/文件重定向句柄绑回 CRT 标准流（Main.cpp BindStdio） | ✅（msvcrt/file.c） | | 高 |
+| `CommandLineToArgvW` | GUI 子系统入口 wWinMain 还原 argv（Main.cpp） | ✅（shellapi） | | 高 |
 | `requireAdministrator` manifest（外部 .manifest 文件） | Windows 提权语义 | ✅ 被解析但忽略 | Wine 无 UAC：不提权也不报错，直接以当前令牌运行 | 高 |
 
 ## 需要按 Wine 版本实测的两个点（empirical）

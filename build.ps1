@@ -1,4 +1,4 @@
-# hybrid-inject 一键构建脚本（Windows）。
+﻿# hybrid-inject 一键构建脚本（Windows）。
 # 按优先级尝试三种工具链：
 #   1. MSVC（vswhere 定位 VS + 自带 CMake/Ninja）
 #   2. MinGW-w64（PATH 中的 g++ + cmake/ninja）
@@ -76,7 +76,8 @@ function Build-WithZig {
     $optimize = if ($Configuration -eq "Release") { "-O2" } else { "-g" }
     $outDir = Join-Path $BuildDir "zig"
 
-    & $zig c++ -target x86_64-windows-gnu -std=c++20 $optimize -municode -Wall -lole32 -lshell32 -luser32 `
+    # zig 不识别 -mwindows，用链接器参数指定 GUI 子系统（GUI 启动不弹控制台）。
+    & $zig c++ -target x86_64-windows-gnu -std=c++20 $optimize -municode "-Wl,--subsystem,windows" -Wall -lole32 -lshell32 -luser32 `
         (Join-Path $RepoRoot "src\Main.cpp") `
         (Join-Path $RepoRoot "src\Injector.cpp") `
         (Join-Path $RepoRoot "src\CliOptions.cpp") `
@@ -90,7 +91,7 @@ function Build-WithZig {
         -o (Join-Path $outDir "testpayload.dll")
     if ($LASTEXITCODE -ne 0) { throw "zig build (testpayload) failed" }
 
-    & $zig c++ -target x86_64-windows-gnu -std=c++20 $optimize -municode `
+    & $zig c++ -target x86_64-windows-gnu -std=c++20 $optimize -municode "-Wl,--subsystem,windows" `
         (Join-Path $RepoRoot "testpayload\testtarget.cpp") `
         -o (Join-Path $outDir "testtarget.exe")
     if ($LASTEXITCODE -ne 0) { throw "zig build (testtarget) failed" }

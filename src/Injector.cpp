@@ -799,12 +799,16 @@ bool Injector::NtInjectDll(HANDLE process, const wchar_t *dllPath, bool verbose)
 
     SIZE_T len = (wcslen(dllPath) + 1) * sizeof(wchar_t);
 
+    // 同 WriteRemoteWideString：RegionSize 是入出参会被取整到页，写入口径
+    // 必须保持为字符串本身长度，否则是随机源越界读。
+    SIZE_T regionSize = len;
+
     PVOID remote = nullptr;
     NTSTATUS status = ntAlloc(
         process,
         &remote,
         0,
-        &len,
+        &regionSize,
         MEM_COMMIT | MEM_RESERVE,
         PAGE_READWRITE);
 
@@ -1052,12 +1056,17 @@ PVOID Injector::WriteRemoteWideString(HANDLE process, const std::wstring &value)
 
     SIZE_T size = (value.size() + 1) * sizeof(wchar_t);
 
+    // NtAllocateVirtualMemory 的 RegionSize 是入出参：返回时被向上取整到页粒度。
+    // 必须用独立副本接分配尺寸，后续只写字符串本身的字节数 —— 直接复用会被
+    // 取整值放大成越界读，在源页未映射时报 STATUS_PARTIAL_COPY（上游潜伏 bug）。
+    SIZE_T regionSize = size;
+
     PVOID remote = nullptr;
     NTSTATUS status = ntAlloc(
         process,
         &remote,
         0,
-        &size,
+        &regionSize,
         MEM_COMMIT | MEM_RESERVE,
         PAGE_READWRITE);
 

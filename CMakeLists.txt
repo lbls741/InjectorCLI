@@ -20,6 +20,9 @@ add_executable(testpayload testpayload/testpayload.cpp)
 
 set_target_properties(hybrid-inject PROPERTIES
     OUTPUT_NAME "hybrid-inject"
+    # GUI 子系统：GUI 方式启动时不再创建控制台窗口（消除"一闪而过"）；
+    # 终端/重定向场景由 Main.cpp 的 BindStdio 手动绑定标准流。
+    WIN32_EXECUTABLE TRUE
 )
 
 set_target_properties(testpayload PROPERTIES

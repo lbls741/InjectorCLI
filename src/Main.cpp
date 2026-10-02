@@ -1,6 +1,8 @@
 #include <windows.h>
 #include <stdio.h>
 #include <io.h>
+#include <fcntl.h>
+#include <shellapi.h>
 #include <string_view>
 #include <string>
 
@@ -13,6 +15,69 @@
 
 namespace
 {
+
+// 本程序为 GUI 子系统（避免 GUI 启动时控制台窗口一闪而过——那扇窗口是
+// 进程创建时由系统分配的，任何用户态手段都晚于它）。代价是标准流不会自动
+// 绑定，这里按启动场景手动恢复：
+//   1. stdout 已被重定向为管道/文件（cmd >、bash |、PowerShell -Redirect*）：
+//      父进程经 STARTUPINFO 传入了句柄，把它绑回 CRT 标准流；
+//   2. 从已有终端启动：AttachConsole(父进程控制台) + CONOUT$/CONIN$ 重绑；
+//   3. 纯 GUI 启动：两者皆无 —— 保持静默（--quiet 语义）。
+// Wine/Proton：AttachConsole/CONOUT$/_open_osfhandle 均为已实现 API，
+// 见 docs/api-compat.md。
+void BindStdio(bool quiet)
+{
+    if (quiet)
+    {
+        return;
+    }
+
+    auto validStd = [](DWORD which) -> HANDLE
+    {
+        HANDLE h = GetStdHandle(which);
+        if (!h || h == INVALID_HANDLE_VALUE || h == reinterpret_cast<HANDLE>(-2))
+        {
+            return nullptr;
+        }
+        return h;
+    };
+
+    HANDLE out = validStd(STD_OUTPUT_HANDLE);
+    const bool redirected = out &&
+        (GetFileType(out) == FILE_TYPE_DISK || GetFileType(out) == FILE_TYPE_PIPE);
+
+    if (redirected)
+    {
+        const DWORD stds[3] = {STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE};
+        const int modes[3] = {_O_RDONLY | _O_BINARY, _O_WRONLY | _O_BINARY, _O_WRONLY | _O_BINARY};
+        for (int i = 0; i < 3; ++i)
+        {
+            HANDLE h = validStd(stds[i]);
+            if (!h)
+            {
+                continue;
+            }
+            const int fd = _open_osfhandle(reinterpret_cast<intptr_t>(h), modes[i]);
+            if (fd == -1)
+            {
+                continue;
+            }
+            _dup2(fd, i);
+            if (fd != i)
+            {
+                _close(fd);
+            }
+        }
+        return;
+    }
+
+    if (AttachConsole(ATTACH_PARENT_PROCESS))
+    {
+        freopen("CONOUT$", "w", stdout);
+        freopen("CONOUT$", "w", stderr);
+        freopen("CONIN$", "r", stdin);
+    }
+}
 
 bool MachineOutputRequested(int argc, wchar_t *argv[])
 {
@@ -246,10 +311,20 @@ int RunTestMode(const ResolvedConfig &config, LaunchEventEmitter &events)
 
 } // namespace
 
-int wmain(
-    int argc,
-    wchar_t *argv[])
+// GUI 子系统入口：无控制台窗口（根治"一闪而过"）。
+// 命令行参数经 CommandLineToArgvW 还原，CLI 语义与控制台入口完全一致。
+int APIENTRY wWinMain(HINSTANCE, HINSTANCE, LPWSTR, int)
 {
+    int argc = 0;
+    wchar_t **argvRaw = CommandLineToArgvW(GetCommandLineW(), &argc);
+    if (!argvRaw)
+    {
+        return EXIT_FAILURE;
+    }
+    wchar_t **argv = argvRaw;
+    const bool helpEarly = RawFlagPresent(argc, argv, L"--help");
+    const bool quietEarly = RawFlagPresent(argc, argv, L"--quiet") && !helpEarly;
+    BindStdio(quietEarly);
     // --machine-readable / --events jsonl：保留 CRT 已重定向的 stdout 句柄给
     // 事件流，随后把人工日志移到 stderr。Start-Process 的文件重定向不保证
     // GetStdHandle 与 CRT 指向同一对象。
@@ -269,14 +344,8 @@ int wmain(
     }
     LaunchEventEmitter events(machineRequested, machine_output);
 
-    // --quiet：在产生任何输出前脱离控制台。GUI 启动时随进程新建的控制台窗口
-    // 会随之关闭；从已有终端启动则只解除本进程依附，窗口保留。
-    // --help 优先于 --quiet（帮助必须可见）。文件/管道重定向句柄（--events
-    // jsonl）不受 FreeConsole 影响，事件流照常输出。
-    if (RawFlagPresent(argc, argv, L"--quiet") && !RawFlagPresent(argc, argv, L"--help"))
-    {
-        FreeConsole();
-    }
+    // --quiet 已在 BindStdio 处理（GUI 子系统本身不分配控制台，静默 = 不做任何
+    // 依附）。--help 优先于 --quiet（帮助必须可见）。
 
     CliOptions cli;
     bool helpRequested = false;

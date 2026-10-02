@@ -48,7 +48,7 @@ build_with_mingw() {
     local opt="-O2"; [[ "$CONFIGURATION" == "Debug" ]] && opt="-g"
     local out="$BUILD_DIR/cross"
     mkdir -p "$out"
-    "$cxx" -std=c++20 $opt -municode -Wall -static \
+    "$cxx" -std=c++20 $opt -municode -mwindows -static \
         -lole32 -lshell32 -luser32 \
         "$REPO_ROOT"/src/Main.cpp \
         "$REPO_ROOT"/src/Injector.cpp \
@@ -59,7 +59,7 @@ build_with_mingw() {
     "$cxx" -std=c++20 $opt -shared \
         "$REPO_ROOT/testpayload/testpayload.cpp" \
         -o "$out/testpayload.dll"
-    "$cxx" -std=c++20 $opt -municode \
+    "$cxx" -std=c++20 $opt -municode -mwindows \
         "$REPO_ROOT/testpayload/testtarget.cpp" \
         -o "$out/testtarget.exe"
     cp -f "$REPO_ROOT/app.manifest" "$out/hybrid-inject.exe.manifest"
@@ -79,7 +79,7 @@ build_with_zig() {
     local out="$BUILD_DIR/zig"
     mkdir -p "$out"
 
-    "$zig" c++ -target x86_64-windows-gnu -std=c++20 "$opt" -municode -Wall -lole32 -lshell32 -luser32 \
+    "$zig" c++ -target x86_64-windows-gnu -std=c++20 "$opt" -municode -Wl,--subsystem,windows -Wall -lole32 -lshell32 -luser32 \
         "$REPO_ROOT/src/Main.cpp" \
         "$REPO_ROOT/src/Injector.cpp" \
         "$REPO_ROOT/src/CliOptions.cpp" \
@@ -89,7 +89,7 @@ build_with_zig() {
     "$zig" c++ -target x86_64-windows-gnu -std=c++20 "$opt" -shared \
         "$REPO_ROOT/testpayload/testpayload.cpp" \
         -o "$out/testpayload.dll"
-    "$zig" c++ -target x86_64-windows-gnu -std=c++20 "$opt" -municode \
+    "$zig" c++ -target x86_64-windows-gnu -std=c++20 "$opt" -municode -Wl,--subsystem,windows \
         "$REPO_ROOT/testpayload/testtarget.cpp" \
         -o "$out/testtarget.exe"
     cp -f "$REPO_ROOT/app.manifest" "$out/hybrid-inject.exe.manifest"
