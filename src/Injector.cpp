@@ -160,8 +160,10 @@ bool Injector::LaunchAndInject(
     wcsncpy_s(runPath, MAX_PATH, config.launch->c_str(), _TRUNCATE);
     wcsncpy_s(runArgs, MAX_PATH, config.launch_args.c_str(), _TRUNCATE);
 
-    // 无 NT 注入项且未选择直注 module：维持原 ShellExecute 路径（UAC/启动器语义）。
-    if (config.inject_dlls.empty() && !config.direct_module)
+    // 仅在显式 --shell 时走 ShellExecute（UAC 启动器场景）。
+    // 上游 e9af2c7 已统一为挂起注入路径：无论有无注入项都 CreateProcessW 挂起，
+    // module 仍由 CBT 钩子负责送达，注入后统一验证。
+    if (config.use_shell)
     {
         printf("[Injector] Launching target with ShellExecute: %ls\n", runPath);
         const HRESULT coInit = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
@@ -381,6 +383,22 @@ bool Injector::LaunchAndInject(
         {
             events.emit_error("export_call", "export_call_failed", "Remote export call failed");
         }
+    }
+
+    // 上游 c5d40f5：必需注入失败时绝不恢复目标。半注入状态的游戏会在图形
+    // 初始化阶段失败且拿不到有用的注入错误；目标此刻仍挂起，可以确定性地
+    // 清理，不会波及已经运行起来的进程。
+    if (!extraOk || !exportOk)
+    {
+        events.emit_error("preflight", "required_injection_failed", "Required DLL injection failed");
+        TerminateProcess(pi.hProcess, ERROR_DLL_INIT_FAILED);
+        if (cbtHook)
+        {
+            UnhookWindowsHookEx(cbtHook);
+        }
+        CloseHandle(pi.hThread);
+        CloseHandle(pi.hProcess);
+        return false;
     }
 
     if (!WaitBeforeResume(config, pi, events))

@@ -16,7 +16,7 @@ DIST_DIR="$REPO_ROOT/dist"
 copy_outputs() {
     local from="$1"
     mkdir -p "$DIST_DIR"
-    for name in hybrid-inject.exe testpayload.dll hybrid-inject.exe.manifest; do
+    for name in hybrid-inject.exe testpayload.dll testtarget.exe hybrid-inject.exe.manifest; do
         if [[ -f "$from/$name" ]]; then
             cp -f "$from/$name" "$DIST_DIR/$name"
             echo "  staged: dist/$name"
@@ -59,6 +59,9 @@ build_with_mingw() {
     "$cxx" -std=c++20 $opt -shared \
         "$REPO_ROOT/testpayload/testpayload.cpp" \
         -o "$out/testpayload.dll"
+    "$cxx" -std=c++20 $opt -municode \
+        "$REPO_ROOT/testpayload/testtarget.cpp" \
+        -o "$out/testtarget.exe"
     cp -f "$REPO_ROOT/app.manifest" "$out/hybrid-inject.exe.manifest"
     copy_outputs "$out"
     return 0
@@ -86,6 +89,9 @@ build_with_zig() {
     "$zig" c++ -target x86_64-windows-gnu -std=c++20 "$opt" -shared \
         "$REPO_ROOT/testpayload/testpayload.cpp" \
         -o "$out/testpayload.dll"
+    "$zig" c++ -target x86_64-windows-gnu -std=c++20 "$opt" -municode \
+        "$REPO_ROOT/testpayload/testtarget.cpp" \
+        -o "$out/testtarget.exe"
     cp -f "$REPO_ROOT/app.manifest" "$out/hybrid-inject.exe.manifest"
     copy_outputs "$out"
     return 0

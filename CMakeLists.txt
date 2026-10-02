@@ -36,6 +36,7 @@ if(MSVC)
         /W3
         /permissive-
         /sdl
+        /utf-8
     )
 elseif(MINGW)
     target_compile_options(hybrid-inject PRIVATE

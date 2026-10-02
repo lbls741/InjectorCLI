@@ -28,6 +28,18 @@ bool MachineOutputRequested(int argc, wchar_t *argv[])
     return false;
 }
 
+bool RawFlagPresent(int argc, wchar_t *argv[], const wchar_t *flag)
+{
+    for (int i = 1; i < argc; ++i)
+    {
+        if (std::wstring_view{argv[i]} == flag)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 std::string Narrow(const std::wstring &value)
 {
     if (value.empty())
@@ -105,6 +117,7 @@ bool ResolveConfig(
     config.wait_mode = cli.wait_mode;
     config.wait_inject = cli.wait_inject;
     config.direct_module = cli.direct_module;
+    config.use_shell = cli.use_shell;
     config.plugin_host_compat = cli.plugin_host_alias;
     config.launch_barrier_id = cli.launch_barrier_id;
     config.verify_timeout_ms = cli.verify_timeout_ms;
@@ -255,6 +268,15 @@ int wmain(
         _dup2(_fileno(stderr), _fileno(stdout));
     }
     LaunchEventEmitter events(machineRequested, machine_output);
+
+    // --quiet：在产生任何输出前脱离控制台。GUI 启动时随进程新建的控制台窗口
+    // 会随之关闭；从已有终端启动则只解除本进程依附，窗口保留。
+    // --help 优先于 --quiet（帮助必须可见）。文件/管道重定向句柄（--events
+    // jsonl）不受 FreeConsole 影响，事件流照常输出。
+    if (RawFlagPresent(argc, argv, L"--quiet") && !RawFlagPresent(argc, argv, L"--help"))
+    {
+        FreeConsole();
+    }
 
     CliOptions cli;
     bool helpRequested = false;

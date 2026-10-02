@@ -22,7 +22,7 @@ function Copy-Outputs {
     param([string]$FromDir)
 
     New-Item -ItemType Directory -Path $DistDir -Force | Out-Null
-    foreach ($name in @("hybrid-inject.exe", "testpayload.dll", "hybrid-inject.exe.manifest")) {
+    foreach ($name in @("hybrid-inject.exe", "testpayload.dll", "testtarget.exe", "hybrid-inject.exe.manifest")) {
         $src = Join-Path $FromDir $name
         if (Test-Path $src) {
             Copy-Item -LiteralPath $src -Destination (Join-Path $DistDir $name) -Force
@@ -89,6 +89,11 @@ function Build-WithZig {
         (Join-Path $RepoRoot "testpayload\testpayload.cpp") `
         -o (Join-Path $outDir "testpayload.dll")
     if ($LASTEXITCODE -ne 0) { throw "zig build (testpayload) failed" }
+
+    & $zig c++ -target x86_64-windows-gnu -std=c++20 $optimize -municode `
+        (Join-Path $RepoRoot "testpayload\testtarget.cpp") `
+        -o (Join-Path $outDir "testtarget.exe")
+    if ($LASTEXITCODE -ne 0) { throw "zig build (testtarget) failed" }
 
     Copy-Item -LiteralPath (Join-Path $RepoRoot "app.manifest") `
         -Destination (Join-Path $outDir "hybrid-inject.exe.manifest") -Force

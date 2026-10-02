@@ -45,6 +45,9 @@ struct CliOptions
     bool wait_mode = false;                  // --wait：不启动进程，轮询已运行目标
     bool wait_inject = false;                // --wait-inject：wait 模式找到目标后主动 NT 注入
     bool direct_module = false;              // --direct-module：挂起阶段 NT 直注 module
+    bool use_shell = false;                  // --shell：强制 ShellExecuteW 启动（UAC 启动器场景）；
+                                             // 默认走挂起注入路径（与上游 e9af2c7 统一）
+    bool quiet = false;                      // --quiet：脱离控制台，不弹窗口
 
     // ---- 集成 ----
     bool machine_readable = false;

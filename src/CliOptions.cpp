@@ -60,9 +60,11 @@ const char *GetUsageText()
         "hybrid-inject - hybrid DLL injector (global CBT hook + NT remote thread)\n"
         "\n"
         "Launch mode (choose one):\n"
-        "  --launch <exe>            Start <exe> and inject.\n"
-        "                            Without --inject: ShellExecute + CBT-hook only.\n"
-        "                            With --inject: suspended CreateProcess + NT injection.\n"
+        "  --launch <exe>            Start <exe> (suspended) and inject. This is the default\n"
+        "                            unified path: CreateProcessW(CREATE_SUSPENDED) + NT\n"
+        "                            injection + resume, mirroring upstream.\n"
+        "  --shell                   Launch via ShellExecuteW instead (CBT-hook only;\n"
+        "                            needed when the target launcher requires UAC elevation).\n"
         "  --wait                    Wait mode: poll for an already-running target.\n"
         "  --wait-inject             Wait mode: when the target appears, OpenProcess + NT-inject\n"
         "                            all --inject DLLs (no CBT hook needed for delivery).\n"
@@ -91,6 +93,9 @@ const char *GetUsageText()
         "                            while the target is created+injected but still suspended.\n"
         "  --mutex-name <name>       Single-instance mutex name (default Local\\hybrid-inject).\n"
         "  --verbose                 Enable verbose internal logging.\n"
+        "  --quiet                   Detach from the console before doing anything: no console\n"
+        "                            window is created for GUI launches (FreeConsole).\n"
+        "                            Pair with --events jsonl under file redirection.\n"
         "  --test-mode               Replay the full event sequence without touching processes.\n"
         "\n"
         "CBT hook:\n"
@@ -216,6 +221,18 @@ CliOptions ParseCliOptions(
         if (arg == L"--wait-inject")
         {
             options.wait_inject = true;
+            continue;
+        }
+
+        if (arg == L"--shell")
+        {
+            options.use_shell = true;
+            continue;
+        }
+
+        if (arg == L"--quiet")
+        {
+            options.quiet = true;
             continue;
         }
 

@@ -21,6 +21,7 @@ struct ResolvedConfig
     bool wait_mode = false;
     bool wait_inject = false;                   // wait 模式下找到目标后主动 NT 注入
     bool direct_module = false;                 // 挂起阶段 NT 直注 module（CBT 不可用时的兜底）
+    bool use_shell = false;                     // 显式 ShellExecuteW 启动（UAC 启动器；上游已默认统一挂起路径）
     bool plugin_host_compat = false;            // --plugin-host-config 别名：补发 plugin_host_* 事件
     std::optional<std::wstring> launch_barrier_id;
     DWORD verify_timeout_ms = 30000;
