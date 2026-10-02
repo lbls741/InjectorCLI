@@ -1,6 +1,8 @@
 自用项目，实现了一个简单的注入器
 
-源自Perxenic-Acid大佬的SSMT4子项目（https://github.com/Perxenic-Acid/SSMT-Native），因为注入器效果确实很好，使用ai修改/添加了CLI薄层，独立出来使用，在此特别致谢
+源自Perxenic-Acid大佬的SSMT4子项目（https://github.com/Perxenic-Acid/SSMT-Native/）
+
+因为注入器效果确实很好，使用ai修改/添加了CLI薄层，独立出来使用，在此特别致谢
 
 为符合上游开源协议在此开源，看心情同步上游
 
